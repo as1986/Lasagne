@@ -1631,6 +1631,7 @@ class GRULayerAtt(MergeLayer):
         enc_shape = self.input_shapes[1]
         assert len(enc_shape) == 3
         num_enc_outputs = enc_shape[2]
+        self.num_enc_outputs = num_enc_outputs
         self.att_dim = att_dim
         self.W_enc_att = self.add_param(init.GlorotNormal(), (num_enc_outputs, self.att_dim), 'W_enc_att')
         self.W_hid_att = self.add_param(init.GlorotNormal(), (self.num_units, self.att_dim), 'W_hid_att')
@@ -1674,7 +1675,7 @@ class GRULayerAtt(MergeLayer):
                 hid_init, (1, self.num_units), name="hid_init",
                 trainable=learn_init, regularizable=False)
         self.att_init = self.add_param(
-                init.Constant(0.), (1, self.att_dim), name='att_init',
+                init.Constant(0.), (1, self.num_enc_outputs), name='att_init',
             trainable=learn_init, regularizable=False
         )
 
