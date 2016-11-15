@@ -1642,7 +1642,8 @@ class GRULayerAtt(MergeLayer):
                              "None when unroll_scan is True")
 
         # Input dimensionality is the output dimensionality of the input layer + att_dim
-        num_inputs = np.prod(input_shape[2:]) + self.att_dim
+        num_inputs = np.prod(input_shape[2:]) + self.num_enc_outputs
+
 
         def add_gate_params(gate, gate_name):
             """ Convenience function for adding layer parameters from a Gate
