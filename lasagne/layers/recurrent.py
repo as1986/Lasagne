@@ -74,7 +74,8 @@ __all__ = [
     "RecurrentLayer",
     "Gate",
     "LSTMLayer",
-    "GRULayer"
+    "GRULayer",
+    "GRULayerAtt"
 ]
 
 
@@ -1628,7 +1629,7 @@ class GRULayerAtt(MergeLayer):
         # Retrieve the dimensionality of the incoming layer
         input_shape = self.input_shapes[0]
         enc_shape = self.input_shapes[1]
-        assert enc_shape.ndims() == 3
+        assert len(enc_shape) == 3
         num_enc_outputs = enc_shape[2]
         self.att_dim = att_dim
         self.W_enc_att = self.add_param(init.GlorotNormal(), (num_enc_outputs, self.att_dim), 'W_enc_att')
@@ -1857,7 +1858,7 @@ class GRULayerAtt(MergeLayer):
                 outputs_info=[hid_init, att_init],
                 go_backwards=self.backwards,
                 non_sequences=non_seqs,
-                n_steps=input_shape[1])[0]
+                n_steps=input_shape[1])[0][0]
         else:
             # Scan op iterates over first dimension of input and repeatedly
             # applies the step function
@@ -1868,7 +1869,7 @@ class GRULayerAtt(MergeLayer):
                 outputs_info=[hid_init, att_init],
                 non_sequences=non_seqs,
                 truncate_gradient=self.gradient_steps,
-                strict=True)[0]
+                strict=True)[0][0]
 
         # When it is requested that we only return the final sequence step,
         # we need to slice it out immediately after scan is applied
