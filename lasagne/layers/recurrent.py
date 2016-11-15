@@ -1489,6 +1489,7 @@ class DynamicGRULayer(MergeLayer):
                                     nonlinearity=nonlinearities.tanh),
                  hid_init=init.Constant(0.),
                  prev_output_window_size=1,
+                 W_pool=init.GlorotUniform(),
                  backwards=False,
                  learn_init=False,
                  gradient_steps=-1,
@@ -1572,6 +1573,11 @@ class DynamicGRULayer(MergeLayer):
 
         self.prev_output_window_size = prev_output_window_size
         self.prev_output_tap_range = range(-self.prev_output_window_size, 0)
+        if isinstance(W_pool, Layer):
+            self.w_pool = W_pool
+        else:
+            self.w_pool = self.add_param(W_pool, (self.num_units, 1),
+                                         name='w_pool')
 
     def get_output_shape_for(self, input_shapes):
         # The shape of the input to this layer will be the first element
@@ -1658,7 +1664,30 @@ class DynamicGRULayer(MergeLayer):
 
         # Create single recurrent computation step function
         # input__n is the n'th vector of the input
-        def step(input_n, hid_previous, *args):
+        def step(*args):
+            input_n = args[0]
+            history_mask = args[1]
+            hids_previous = args[2:self.prev_output_window_size+2]
+
+            hids_previous_concatenated = T.concatenate(
+                hids_previous, axis=1
+            )
+
+            hids_previous_att = T.dot(hids_previous_concatenated,
+                                      self.w_pool)
+            hids_previous_att = T.reshape(hids_previous_att,
+                                          (hids_previous_att.shape[0],
+                                           hids_previous_att.shape[1]))
+            # mask -- assumed to be either 1 or -inf
+            hids_previous_att = (hids_previous_att * history_mask)
+            hids_previous_smax = T.nnet.nnet.softmax(hids_previous_att).dimshuffle(0, 1, 'x')
+
+            # hids_previous_smax.shape == (num_batch, window_size, 1)
+            # hids_previous_concatenated.shape ==
+            # (num_batch, window_size, hid_size)
+            hid_previous = \
+                T.sum(hids_previous_smax * hids_previous_concatenated, axis=1)
+
             # Compute W_{hr} h_{t - 1}, W_{hu} h_{t - 1}, and W_{hc} h_{t - 1}
             hid_input = T.dot(hid_previous, W_hid_stacked)
 
@@ -1691,8 +1720,8 @@ class DynamicGRULayer(MergeLayer):
             hid = (1 - updategate)*hid_previous + updategate*hidden_update
             return hid
 
-        def step_masked(input_n, mask_n, hid_previous, *args):
-            hid = step(input_n, hid_previous, *args)
+        def step_masked(mask_n, *args):
+            hid = step(*args)
 
             # Skip over any input with mask 0 by copying the previous
             # hidden state; proceed normally for any input with mask 1.

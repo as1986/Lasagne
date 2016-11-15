@@ -341,7 +341,7 @@ class ElemwiseMergeLayer(MergeLayer):
 
         # Check for compatibility with inferred output shape
         if not all(match(shape, output_shape) for shape in input_shapes):
-            raise ValueError("Mismatch: not all input shapes are the same")
+            raise ValueError("Mismatch: not all input shapes are the same. \ninput_shapes: {} output_shape: {}".format(input_shapes, output_shape))
         return output_shape
 
     def get_output_for(self, inputs, **kwargs):
