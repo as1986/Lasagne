@@ -1633,8 +1633,14 @@ class GRULayerAtt(MergeLayer):
         num_enc_outputs = enc_shape[2]
         self.num_enc_outputs = num_enc_outputs
         self.att_dim = att_dim
-        self.W_enc_att = self.add_param(init.GlorotNormal(), (num_enc_outputs, self.att_dim), 'W_enc_att')
-        self.W_hid_att = self.add_param(init.GlorotNormal(), (self.num_units, self.att_dim), 'W_hid_att')
+        self.W_enc_att = self.add_param(init.GlorotNormal(), (num_enc_outputs, self.att_dim),
+                                        'W_enc_att')
+        self.W_enc_att_prod = self.add_param(init.GlorotNormal(), (num_enc_outputs, self.att_dim),
+                                             'W_enc_att_prod')
+        self.W_hid_att = self.add_param(init.GlorotNormal(), (self.num_units, self.att_dim),
+                                        'W_hid_att')
+        self.W_hid_att_prod = self.add_param(init.GlorotNormal(), (self.num_units, self.att_dim),
+                                             'W_hid_att_prod')
         self.W_att = self.add_param(init.GlorotNormal(), (self.att_dim, 1), 'W_att')
 
         if unroll_scan and input_shape[1] is None:
@@ -1761,6 +1767,7 @@ class GRULayerAtt(MergeLayer):
             input = T.dot(input, W_in_stacked) + b_stacked
 
         enc_att_precomputed = T.dot(encoded, self.W_enc_att)
+        enc_att_prod_precomputed = T.dot(encoded, self.W_enc_att_prod)
 
         # When theano.scan calls step, input_n will be (n_batch, 3*num_units).
         # We define a slicing function that extract the input to each GRU gate
@@ -1805,7 +1812,9 @@ class GRULayerAtt(MergeLayer):
 
             hid_att = T.dot(hid, self.W_hid_att)
             hid_att = hid_att.dimshuffle(0,'x',1)
-            ut = T.dot(T.tanh(enc_att_precomputed + hid_att),
+            hid_att_prod = T.dot(hid, self.W_hid_att_prod)
+            hid_att_prod = hid_att_prod.dimshuffle(0,'x',1)
+            ut = T.dot(T.tanh(enc_att_precomputed + hid_att + enc_att_prod_precomputed * hid_att_prod),
                        self.W_att).flatten(ndim=2) \
                  * encoded_mask.astype('float32')
             masked_attention_exp = T.switch(T.neq(encoded_mask, 0),
@@ -1844,7 +1853,8 @@ class GRULayerAtt(MergeLayer):
 
         # The hidden-to-hidden weight matrix is always used in step
         non_seqs = [W_hid_stacked]
-        non_seqs += [encoded, enc_att_precomputed, encoded_mask, self.W_hid_att, self.W_att]
+        non_seqs += [encoded, enc_att_precomputed, encoded_mask, self.W_hid_att, self.W_att,
+                     self.W_hid_att_prod, enc_att_prod_precomputed]
         # When we aren't precomputing the input outside of scan, we need to
         # provide the input weights and biases to the step function
         if not self.precompute_input:
