@@ -1008,7 +1008,10 @@ class LSTMLayer(MergeLayer):
         # When theano.scan calls step, input_n will be (n_batch, 4*num_units).
         # We define a slicing function that extract the input to each LSTM gate
         def slice_w(x, n):
-            return x[:, n*self.num_units:(n+1)*self.num_units]
+            s = x[:, n*self.num_units:(n+1)*self.num_units]
+            if self.num_units == 1:
+                s = T.addbroadcast(s, 1)  # Theano cannot infer this by itself
+            return s
 
         # Create single recurrent computation step function
         # input_n is the n'th vector of the input
@@ -1392,7 +1395,10 @@ class GRULayer(MergeLayer):
         # When theano.scan calls step, input_n will be (n_batch, 3*num_units).
         # We define a slicing function that extract the input to each GRU gate
         def slice_w(x, n):
-            return x[:, n*self.num_units:(n+1)*self.num_units]
+            s = x[:, n*self.num_units:(n+1)*self.num_units]
+            if self.num_units == 1:
+                s = T.addbroadcast(s, 1)  # Theano cannot infer this by itself
+            return s
 
         # Create single recurrent computation step function
         # input__n is the n'th vector of the input
