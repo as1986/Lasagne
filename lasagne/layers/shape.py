@@ -266,7 +266,7 @@ class DimshuffleLayer(Layer):
                 dims_used[p] = True
             elif p == 'x':
                 # Broadcast; will be of size 1
-                o = 1
+                o = None
             output_shape.append(o)
 
         for i, (dim_size, used) in enumerate(zip(input_shape, dims_used)):
